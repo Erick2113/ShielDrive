@@ -1,5 +1,6 @@
 package com.example.shieldrive.ui.pantallas
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.Image
 import com.example.shieldrive.ui.theme.*
 import androidx.compose.material3.MaterialTheme
@@ -27,19 +28,18 @@ import androidx.compose.ui.window.Dialog
 import com.example.shieldrive.model.Reserva
 import com.example.shieldrive.viewmodel.ReservasUsuarioViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PantallaReservas(reservasViewModel: ReservasUsuarioViewModel) {
 
     val misReservas = reservasViewModel.listaMisReservas
     var reservaSeleccionada by remember { mutableStateOf<Reserva?>(null) }
 
-
     val reservasVisibles = misReservas.filter { !it.archivada }
-
 
     Column(modifier = Modifier.fillMaxSize().background(Color.Transparent).padding(16.dp)) {
         Text("Mis Reservas", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground, modifier = Modifier.padding(top = 16.dp))
-        Text("Toca una reserva para ver tu ticket QR", fontSize = 14.sp, color = TextSecondary)
+        Text("Toca una reserva para ver tu ticket o desliza para eliminar", fontSize = 14.sp, color = TextSecondary)
         Spacer(modifier = Modifier.height(16.dp))
 
         if (reservasVisibles.isEmpty()) {
@@ -48,34 +48,75 @@ fun PantallaReservas(reservasViewModel: ReservasUsuarioViewModel) {
             }
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                items(reservasVisibles) { reserva ->
-                    Card(
-                        modifier = Modifier.fillMaxWidth().clickable { reservaSeleccionada = reserva },
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                        shape = RoundedCornerShape(16.dp)
-                    ) {
-                        Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            Box(modifier = Modifier.size(50.dp).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
-                                Icon(Icons.Rounded.DirectionsCar, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                            }
-                            Spacer(modifier = Modifier.width(16.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(reserva.vehiculoInfo, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = MaterialTheme.colorScheme.onBackground)
-                                Text("${reserva.fechaInicio} al ${reserva.fechaFin}", fontSize = 12.sp, color = TextSecondary)
-                            }
-                            Column(horizontalAlignment = Alignment.End) {
+                items(reservasVisibles, key = { it.id }) { reserva ->
+                    // 🔒 Solo se puede deslizar para borrar si la reserva ya concluyó o fue rechazada
+                    val puedeEliminar = reserva.estado == "Finalizada" || reserva.estado == "Rechazada"
 
-                                val colorEstado = when(reserva.estado) {
-                                    "Finalizada" -> TextSecondary
-                                    "Rechazada" -> MaterialTheme.colorScheme.error
-                                    else -> SuccessColor
-                                }
-                                Text(reserva.estado, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = colorEstado)
-                                Text("$${reserva.totalMonto}", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onBackground)
+                    val dismissState = rememberSwipeToDismissBoxState(
+                        confirmValueChange = { dismissValue ->
+                            if (dismissValue == SwipeToDismissBoxValue.EndToStart && puedeEliminar) {
+                                reservasViewModel.archivarReserva(reserva.id)
+                                true
+                            } else {
+                                false
                             }
                         }
-                    }
+                    )
+
+                    SwipeToDismissBox(
+                        state = dismissState,
+                        enableDismissFromStartToEnd = false,
+                        enableDismissFromEndToStart = puedeEliminar,
+                        backgroundContent = {
+                            if (puedeEliminar) {
+                                val color by animateColorAsState(
+                                    targetValue = if (dismissState.targetValue == SwipeToDismissBoxValue.EndToStart) MaterialTheme.colorScheme.error else Color.Transparent,
+                                    label = "ColorFondoEliminar"
+                                )
+
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(color, RoundedCornerShape(16.dp))
+                                        .padding(horizontal = 20.dp),
+                                    contentAlignment = Alignment.CenterEnd
+                                ) {
+                                    Icon(Icons.Default.Delete, contentDescription = "Eliminar", tint = Color.White, modifier = Modifier.size(28.dp))
+                                }
+                            }
+                        },
+                        content = {
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { reservaSeleccionada = reserva },
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                                shape = RoundedCornerShape(16.dp)
+                            ) {
+                                Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                    Box(modifier = Modifier.size(50.dp).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
+                                        Icon(Icons.Rounded.DirectionsCar, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                    }
+                                    Spacer(modifier = Modifier.width(16.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(reserva.vehiculoInfo, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = MaterialTheme.colorScheme.onBackground)
+                                        Text("${reserva.fechaInicio} al ${reserva.fechaFin}", fontSize = 12.sp, color = TextSecondary)
+                                    }
+                                    Column(horizontalAlignment = Alignment.End) {
+                                        val colorEstado = when(reserva.estado) {
+                                            "Finalizada" -> TextSecondary
+                                            "Rechazada" -> MaterialTheme.colorScheme.error
+                                            "En proceso de autorización" -> WarningColor
+                                            else -> SuccessColor
+                                        }
+                                        Text(reserva.estado, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = colorEstado)
+                                        Text("$${reserva.totalMonto}", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onBackground)
+                                    }
+                                }
+                            }
+                        }
+                    )
                 }
             }
         }
@@ -117,14 +158,19 @@ fun PantallaReservas(reservasViewModel: ReservasUsuarioViewModel) {
                         Text("Fechas:", color = TextSecondary, fontSize = 14.sp)
                         Text("${reserva.fechaInicio} - ${reserva.fechaFin}", fontWeight = FontWeight.Bold, fontSize = 12.sp)
                     }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("Estado:", color = TextSecondary, fontSize = 14.sp)
+                        Text(reserva.estado, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
 
-
+                    // Botón de eliminar visible solo cuando está Finalizada o Rechazada
                     if (reserva.estado == "Finalizada" || reserva.estado == "Rechazada") {
                         Spacer(modifier = Modifier.height(24.dp))
                         OutlinedButton(
                             onClick = {
                                 reservasViewModel.archivarReserva(reserva.id)
-                                reservaSeleccionada = null // Cerramos el dialog al borrar
+                                reservaSeleccionada = null
                             },
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
                             modifier = Modifier.fillMaxWidth()

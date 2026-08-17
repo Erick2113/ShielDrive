@@ -4,7 +4,6 @@ import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
-import android.media.RingtoneManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -17,24 +16,20 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
-import androidx.core.app.NotificationCompat
 import com.example.shieldrive.ui.navegacion.ShielDriveApp
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.DocumentChange
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.messaging.FirebaseMessaging
-import kotlin.random.Random
 
 class MainActivity : ComponentActivity() {
-
-    // Variable para controlar que no se dupliquen las alertas
-    private var escuchadorNotificaciones: ListenerRegistration? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        iniciarEscuchadorGlobal(this)
+        // 1. Crear el canal del sistema operativo requerido por Android (Prioridad Alta)
+        crearCanalNotificaciones(this)
+
+        // 2. Suscribir reactivamente al canal según la sesión activa
+        configurarSuscripcionTopics()
 
         setContent {
             Surface(
@@ -47,75 +42,39 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun iniciarEscuchadorGlobal(context: Context) {
-        val auth = FirebaseAuth.getInstance()
-        val db = FirebaseFirestore.getInstance()
-
-        // Memoria interna del teléfono para guardar el UID
-        val preferencias = context.getSharedPreferences("MemoriaShielDrive", Context.MODE_PRIVATE)
-
-        val tiempoAppIniciada = System.currentTimeMillis()
-
-        auth.addAuthStateListener { firebaseAuth ->
-            val uidActual = firebaseAuth.currentUser?.uid
-
-            // Si hay sesión iniciada, guardamos su UID en la memoria del teléfono
-            if (uidActual != null) {
-                preferencias.edit().putString("ULTIMO_UID_ACTIVO", uidActual).apply()
+    private fun crearCanalNotificaciones(context: Context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channelId = "shieldrive_notifications"
+            val channelName = "Notificaciones ShielDrive"
+            val importance = NotificationManager.IMPORTANCE_HIGH
+            val channel = NotificationChannel(channelId, channelName, importance).apply {
+                description = "Canal principal para alertas y reservas"
+                enableLights(true)
+                enableVibration(true)
             }
-
-            // TRUCO: Buscamos el UID actual, y si cerró sesión, sacamos el que guardamos en memoria
-            val uidParaEscuchar = uidActual ?: preferencias.getString("ULTIMO_UID_ACTIVO", null)
-
-            if (uidParaEscuchar != null) {
-                // Borramos el escuchador anterior por si cambió de cuenta para que no suene doble
-                escuchadorNotificaciones?.remove()
-
-                // Iniciamos la escucha ininterrumpida
-                escuchadorNotificaciones = db.collection("notificaciones")
-                    .whereEqualTo("usuarioId", uidParaEscuchar)
-                    .whereEqualTo("leida", false)
-                    .addSnapshotListener { snapshot, error ->
-                        if (error != null || snapshot == null) return@addSnapshotListener
-
-                        for (cambio in snapshot.documentChanges) {
-                            if (cambio.type == DocumentChange.Type.ADDED) {
-                                val fechaNotif = cambio.document.getLong("fecha") ?: 0L
-
-                                if (fechaNotif >= tiempoAppIniciada) {
-                                    val titulo = cambio.document.getString("titulo") ?: "Nueva Alerta"
-                                    val mensaje = cambio.document.getString("mensaje") ?: "Abre ShielDrive para ver los detalles."
-
-                                    mostrarNotificacionTelefono(context, titulo, mensaje)
-                                }
-                            }
-                        }
-                    }
-            }
+            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.createNotificationChannel(channel)
         }
     }
 
-    private fun mostrarNotificacionTelefono(context: Context, titulo: String, mensaje: String) {
-        val channelId = "shieldrive_alertas_global"
-        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    private fun configurarSuscripcionTopics() {
+        val auth = FirebaseAuth.getInstance()
+        val messaging = FirebaseMessaging.getInstance()
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(channelId, "Alertas ShielDrive", NotificationManager.IMPORTANCE_HIGH)
-            notificationManager.createNotificationChannel(channel)
+        auth.addAuthStateListener { firebaseAuth ->
+            val user = firebaseAuth.currentUser
+            if (user != null) {
+                if (user.email.equals("admin@shieldrive.com", ignoreCase = true)) {
+                    messaging.subscribeToTopic("admin").addOnSuccessListener {
+                        println("Suscrito exitosamente al tópico: admin")
+                    }
+                } else {
+                    messaging.subscribeToTopic("cliente_${user.uid}").addOnSuccessListener {
+                        println("Suscrito exitosamente al tópico: cliente_${user.uid}")
+                    }
+                }
+            }
         }
-
-        val sonido = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-
-        val notificacion = NotificationCompat.Builder(context, channelId)
-            .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle(titulo)
-            .setContentText(mensaje)
-            .setAutoCancel(true)
-            .setSound(sonido)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .build()
-
-        notificationManager.notify(Random.nextInt(), notificacion)
     }
 }
 
@@ -123,25 +82,38 @@ class MainActivity : ComponentActivity() {
 fun SolicitarPermisosIniciales() {
     val launcherPermisos = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
-    ) { permisos ->
-        val notifConcedida = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            permisos[Manifest.permission.POST_NOTIFICATIONS] ?: false
-        } else true
-
-        if (notifConcedida) {
-            FirebaseMessaging.getInstance().subscribeToTopic("general")
-        }
-    }
+    ) { _ -> }
 
     LaunchedEffect(Unit) {
-        val permisosASolicitar = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            arrayOf(
-                Manifest.permission.CAMERA,
-                Manifest.permission.POST_NOTIFICATIONS
-            )
+        val permisos = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            arrayOf(Manifest.permission.CAMERA, Manifest.permission.POST_NOTIFICATIONS)
         } else {
             arrayOf(Manifest.permission.CAMERA)
         }
-        launcherPermisos.launch(permisosASolicitar)
+        launcherPermisos.launch(permisos)
     }
+}
+
+
+fun lanzarNotificacionPush(titulo: String, mensaje: String, topicoDestino: String) {
+    Thread {
+        try {
+            val url = java.net.URL("https://script.google.com/macros/s/AKfycby3bMtmPT16NwFQl7kAwSwiTZEEe_M778TtQqo-I56PYiQumFiLPyHsJUhBueIDMpqq/exec")
+            val conexion = url.openConnection() as java.net.HttpURLConnection
+            conexion.requestMethod = "POST"
+            conexion.setRequestProperty("Content-Type", "application/json; charset=UTF-8")
+            conexion.doOutput = true
+
+            val json = """{"titulo": "$titulo", "mensaje": "$mensaje", "topico": "$topicoDestino"}"""
+
+            conexion.outputStream.use { os ->
+                os.write(json.toByteArray(Charsets.UTF_8))
+                os.flush()
+            }
+
+            println("Respuesta servidor Push ($topicoDestino): ${conexion.responseCode}")
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }.start()
 }

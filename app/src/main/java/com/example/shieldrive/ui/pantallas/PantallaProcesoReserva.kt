@@ -39,6 +39,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.shieldrive.model.Vehiculo
+import com.example.shieldrive.lanzarNotificacionPush // IMPORTACIÓN DE TU MISIL SERVERLESS
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
@@ -193,7 +194,17 @@ fun PantallaProcesoReserva(
                                 reservaCompletada = true
                                 pasoActual = 3
                             }
-                            3 -> onConfirmar(nombre, telefono, numeroDocumento, fechaInicioTexto, fechaFinTexto, idReservaGenerado, totalAPagar.toString())
+                            3 -> {
+                                // 1. Confirma la reserva en tu Firestore
+                                onConfirmar(nombre, telefono, numeroDocumento, fechaInicioTexto, fechaFinTexto, idReservaGenerado, totalAPagar.toString())
+
+                                // 2. 🔥 DISPARA LA ALERTA AL ADMINISTRADOR 🔥
+                                lanzarNotificacionPush(
+                                    titulo = "¡Nueva Reserva! \uD83D\uDE97",
+                                    mensaje = "$nombre ha reservado el ${vehiculo.marca} ${vehiculo.modelo}.",
+                                    topicoDestino = "admin"
+                                )
+                            }
                         }
                     },
                     modifier = Modifier.fillMaxWidth().height(56.dp),
@@ -240,7 +251,6 @@ fun PantallaProcesoReserva(
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     OutlinedTextField(value = telefono, onValueChange = { telefono = it }, label = { Text("Teléfono") }, leadingIcon = { Icon(Icons.Rounded.Phone, null) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp), colors = textFieldColors)
 
-                    // CAMBIO AQUÍ: Solo la variable numeroDocumento (sin el texto "Esperando IA...")
                     OutlinedTextField(
                         value = numeroDocumento,
                         onValueChange = { },
@@ -378,7 +388,8 @@ fun PantallaProcesoReserva(
                     colors = ButtonDefaults.textButtonColors(contentColor = TextSecondary)
                 ) { Text("Cancelar") }
             }
-        ) {
+        )
+        {
             DatePicker(
                 state = datePickerState,
                 colors = DatePickerDefaults.colors(
