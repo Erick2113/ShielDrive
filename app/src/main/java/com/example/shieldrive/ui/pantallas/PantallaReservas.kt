@@ -1,6 +1,8 @@
 package com.example.shieldrive.ui.pantallas
 
 import androidx.compose.foundation.Image
+import com.example.shieldrive.ui.theme.*
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -8,6 +10,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.DirectionsCar
 import androidx.compose.material3.*
@@ -30,36 +33,46 @@ fun PantallaReservas(reservasViewModel: ReservasUsuarioViewModel) {
     val misReservas = reservasViewModel.listaMisReservas
     var reservaSeleccionada by remember { mutableStateOf<Reserva?>(null) }
 
-    Column(modifier = Modifier.fillMaxSize().background(Color(0xFFF8FAFC)).padding(16.dp)) {
-        Text("Mis Reservas", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E293B), modifier = Modifier.padding(top = 16.dp))
-        Text("Toca una reserva para ver tu ticket QR", fontSize = 14.sp, color = Color.Gray)
+
+    val reservasVisibles = misReservas.filter { !it.archivada }
+
+
+    Column(modifier = Modifier.fillMaxSize().background(Color.Transparent).padding(16.dp)) {
+        Text("Mis Reservas", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground, modifier = Modifier.padding(top = 16.dp))
+        Text("Toca una reserva para ver tu ticket QR", fontSize = 14.sp, color = TextSecondary)
         Spacer(modifier = Modifier.height(16.dp))
 
-        if (misReservas.isEmpty()) {
+        if (reservasVisibles.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Aún no tienes reservas activas.", color = Color.Gray)
+                Text("Aún no tienes reservas activas.", color = TextSecondary)
             }
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                items(misReservas) { reserva ->
+                items(reservasVisibles) { reserva ->
                     Card(
                         modifier = Modifier.fillMaxWidth().clickable { reservaSeleccionada = reserva },
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                         shape = RoundedCornerShape(16.dp)
                     ) {
                         Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            Box(modifier = Modifier.size(50.dp).background(Color(0xFF2970FF).copy(alpha = 0.1f), RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
-                                Icon(Icons.Rounded.DirectionsCar, contentDescription = null, tint = Color(0xFF2970FF))
+                            Box(modifier = Modifier.size(50.dp).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
+                                Icon(Icons.Rounded.DirectionsCar, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                             }
                             Spacer(modifier = Modifier.width(16.dp))
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(reserva.vehiculoInfo, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color(0xFF1E293B))
-                                Text("${reserva.fechaInicio} al ${reserva.fechaFin}", fontSize = 12.sp, color = Color.Gray)
+                                Text(reserva.vehiculoInfo, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = MaterialTheme.colorScheme.onBackground)
+                                Text("${reserva.fechaInicio} al ${reserva.fechaFin}", fontSize = 12.sp, color = TextSecondary)
                             }
                             Column(horizontalAlignment = Alignment.End) {
-                                Text(reserva.estado, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color(0xFF10B981))
-                                Text("$${reserva.totalMonto}", fontWeight = FontWeight.Black, color = Color(0xFF1E293B))
+
+                                val colorEstado = when(reserva.estado) {
+                                    "Finalizada" -> TextSecondary
+                                    "Rechazada" -> MaterialTheme.colorScheme.error
+                                    else -> SuccessColor
+                                }
+                                Text(reserva.estado, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = colorEstado)
+                                Text("$${reserva.totalMonto}", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onBackground)
                             }
                         }
                     }
@@ -68,23 +81,22 @@ fun PantallaReservas(reservasViewModel: ReservasUsuarioViewModel) {
         }
     }
 
-
     reservaSeleccionada?.let { reserva ->
         Dialog(onDismissRequest = { reservaSeleccionada = null }) {
             Card(
                 modifier = Modifier.fillMaxWidth().padding(16.dp),
                 shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White)
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
                 Column(modifier = Modifier.padding(24.dp).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Text("TICKET DE RESERVA", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray, letterSpacing = 2.sp)
+                        Text("TICKET DE RESERVA", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TextSecondary, letterSpacing = 2.sp)
                         IconButton(onClick = { reservaSeleccionada = null }, modifier = Modifier.size(24.dp)) {
-                            Icon(Icons.Rounded.Close, null, tint = Color.Gray)
+                            Icon(Icons.Rounded.Close, null, tint = TextSecondary)
                         }
                     }
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text(reserva.id, fontSize = 22.sp, fontWeight = FontWeight.Black, color = Color(0xFF1E293B))
+                    Text(reserva.id, fontSize = 22.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onBackground)
                     Spacer(modifier = Modifier.height(24.dp))
 
                     val qrBitmap = generarQR(reserva.id)
@@ -93,27 +105,34 @@ fun PantallaReservas(reservasViewModel: ReservasUsuarioViewModel) {
                     }
 
                     Spacer(modifier = Modifier.height(24.dp))
-                    HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 2.dp)
+                    HorizontalDivider(color = MaterialTheme.colorScheme.background, thickness = 2.dp)
                     Spacer(modifier = Modifier.height(16.dp))
 
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Vehículo:", color = Color.Gray, fontSize = 14.sp)
+                        Text("Vehículo:", color = TextSecondary, fontSize = 14.sp)
                         Text(reserva.vehiculoInfo, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Cliente:", color = Color.Gray, fontSize = 14.sp)
-                        Text(reserva.clienteNombre, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Documento:", color = Color.Gray, fontSize = 14.sp)
-                        Text(reserva.documento, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Fechas:", color = Color.Gray, fontSize = 14.sp)
+                        Text("Fechas:", color = TextSecondary, fontSize = 14.sp)
                         Text("${reserva.fechaInicio} - ${reserva.fechaFin}", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
+
+
+                    if (reserva.estado == "Finalizada" || reserva.estado == "Rechazada") {
+                        Spacer(modifier = Modifier.height(24.dp))
+                        OutlinedButton(
+                            onClick = {
+                                reservasViewModel.archivarReserva(reserva.id)
+                                reservaSeleccionada = null // Cerramos el dialog al borrar
+                            },
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.Delete, contentDescription = "Eliminar", modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Eliminar de mis reservas")
+                        }
                     }
                 }
             }

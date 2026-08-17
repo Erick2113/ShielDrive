@@ -1,6 +1,9 @@
 package com.example.shieldrive.ui.pantallas
 
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import com.example.shieldrive.ui.theme.*
+import androidx.compose.material3.MaterialTheme
 import android.util.Base64
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -27,11 +30,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.shieldrive.model.Vehiculo
 import com.example.shieldrive.viewmodel.ResenasGlobalViewModel
+import com.google.firebase.firestore.FirebaseFirestore
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -42,13 +47,12 @@ fun PantallaDetalleVehiculo(
     onVolver: () -> Unit,
     onReservarClick: (Vehiculo) -> Unit
 ) {
-    // Leemos las reseñas
+
     val resenasDelAuto = resenasViewModel.obtenerResenasPorVehiculo(vehiculo.id)
     val yaCalifico = resenasViewModel.yaCalificoVehiculo(vehiculo.id)
 
     val cantidadResenas = resenasDelAuto.size
     val ratingReal = if (cantidadResenas > 0) resenasDelAuto.sumOf { it.estrellas }.toDouble() / cantidadResenas else 0.0
-
 
     val isDisponible = vehiculo.estado == "Disponible"
 
@@ -59,20 +63,21 @@ fun PantallaDetalleVehiculo(
     }
 
     val colorEstado = when(vehiculo.estado) {
-        "Disponible" -> Color(0xFF10B981) // Verde
-        "En proceso" -> Color(0xFFF59E0B) // Naranja
-        else -> Color.Red // Rojo
+        "Disponible" -> SuccessColor
+        "En proceso" -> WarningColor
+        else -> ErrorColor
     }
 
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
                 title = { Text("") },
                 navigationIcon = {
-                    IconButton(onClick = onVolver) { Icon(Icons.Filled.ArrowBack, contentDescription = "Volver") }
+                    IconButton(onClick = onVolver) { Icon(Icons.Filled.ArrowBack, contentDescription = "Volver", tint = TextPrimary) }
                 },
                 actions = {
-                    IconButton(onClick = { /* Opciones */ }) { Icon(Icons.Filled.MoreVert, contentDescription = "Opciones") }
+                    IconButton(onClick = { /* Opciones */ }) { Icon(Icons.Filled.MoreVert, contentDescription = "Opciones", tint = TextPrimary) }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
@@ -87,14 +92,14 @@ fun PantallaDetalleVehiculo(
                 Button(
                     onClick = { if (isDisponible) onReservarClick(vehiculo) },
                     modifier = Modifier.fillMaxWidth().height(56.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = if (isDisponible) Color(0xFF1E293B) else Color.Gray),
+                    colors = ButtonDefaults.buttonColors(containerColor = if (isDisponible) Primary else TextSecondary),
                     shape = RoundedCornerShape(16.dp),
-                    enabled = isDisponible // Se desactiva automáticamente si no está disponible
+                    enabled = isDisponible
                 ) {
-                    Text(textoBoton, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Text(textoBoton, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
                     if (isDisponible) {
                         Spacer(modifier = Modifier.width(8.dp))
-                        Icon(Icons.Rounded.ArrowForward, contentDescription = null)
+                        Icon(Icons.Rounded.ArrowForward, contentDescription = null, tint = Color.White)
                     }
                 }
             }
@@ -103,7 +108,7 @@ fun PantallaDetalleVehiculo(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFFFDFDFD))
+                .background(Color.Transparent)
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
         ) {
@@ -122,20 +127,20 @@ fun PantallaDetalleVehiculo(
                 } else if (decodedBitmap != null) {
                     Image(bitmap = decodedBitmap.asImageBitmap(), contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                 } else {
-                    Box(modifier = Modifier.fillMaxSize().background(Color(0xFFF1F5F9)), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Rounded.DirectionsCar, null, tint = Color.LightGray, modifier = Modifier.size(64.dp))
+                    Box(modifier = Modifier.fillMaxSize().background(Color(0xFFE2E8F0)), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Rounded.DirectionsCar, null, tint = TextSecondary.copy(alpha = 0.5f), modifier = Modifier.size(64.dp))
                     }
                 }
             }
 
             Column(modifier = Modifier.padding(20.dp)) {
-                // --- TÍTULO Y CHIP DE ESTADO ---
+
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
                     Text(
                         text = "${vehiculo.marca} ${vehiculo.modelo} ${vehiculo.anio}",
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF1E293B),
+                        color = TextPrimary,
                         modifier = Modifier.weight(1f)
                     )
                     Surface(shape = RoundedCornerShape(8.dp), color = colorEstado.copy(alpha = 0.1f), modifier = Modifier.padding(start = 8.dp)) {
@@ -151,9 +156,9 @@ fun PantallaDetalleVehiculo(
 
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Rounded.Star, contentDescription = null, tint = Color(0xFFF59E0B), modifier = Modifier.size(18.dp))
+                    Icon(Icons.Rounded.Star, contentDescription = null, tint = WarningColor, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text(text = "${String.format(Locale.getDefault(), "%.1f", ratingReal)} ($cantidadResenas Reseñas)", fontSize = 14.sp, color = Color.Gray)
+                    Text(text = "${String.format(Locale.getDefault(), "%.1f", ratingReal)} ($cantidadResenas Reseñas)", fontSize = 14.sp, color = TextSecondary)
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -169,35 +174,49 @@ fun PantallaDetalleVehiculo(
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
-                Text(text = "Descripción", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E293B))
+                Text(text = "Descripción", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
                 Spacer(modifier = Modifier.height(8.dp))
-                Text(text = vehiculo.descripcion.ifEmpty { "Sin descripción disponible." }, fontSize = 14.sp, color = Color.Gray)
+                Text(text = vehiculo.descripcion.ifEmpty { "Sin descripción disponible." }, fontSize = 14.sp, color = TextSecondary)
 
                 Spacer(modifier = Modifier.height(32.dp))
-                Text(text = "Reseñas", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E293B))
+                Text(text = "Reseñas", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
                 Spacer(modifier = Modifier.height(12.dp))
 
                 if (resenasDelAuto.isEmpty()) {
                     Box(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp), contentAlignment = Alignment.Center) {
-                        Text("Aún no hay reseñas para este vehículo.", color = Color.Gray, fontSize = 14.sp)
+                        Text("Aún no hay reseñas para este vehículo.", color = TextSecondary, fontSize = 14.sp)
                     }
                 } else {
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                         items(resenasDelAuto) { resena ->
-                            ResenaCard(autor = resena.autor, comentario = resena.comentario, estrellas = resena.estrellas)
+
+
+                            val idUsuario = try {
+                                resena::class.java.getDeclaredField("usuarioId").apply { isAccessible = true }.get(resena) as? String ?: ""
+                            } catch (e: Exception) {
+                                try {
+                                    resena::class.java.getDeclaredField("userId").apply { isAccessible = true }.get(resena) as? String ?: ""
+                                } catch (e2: Exception) { "" }
+                            }
+
+                            ResenaCard(
+                                autor = resena.autor,
+                                comentario = resena.comentario,
+                                estrellas = resena.estrellas,
+                                usuarioId = idUsuario
+                            )
                         }
                     }
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
-                HorizontalDivider(color = Color(0xFFF1F5F9))
+                HorizontalDivider(color = Color(0xFFE2E8F0))
                 Spacer(modifier = Modifier.height(24.dp))
-
 
                 if (yaCalifico) {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFFE2E8F0)),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF1F5F9)),
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Text(
@@ -205,7 +224,7 @@ fun PantallaDetalleVehiculo(
                             modifier = Modifier.padding(16.dp),
                             color = Color.DarkGray,
                             fontSize = 14.sp,
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            textAlign = TextAlign.Center
                         )
                     }
                     Spacer(modifier = Modifier.height(32.dp))
@@ -213,7 +232,7 @@ fun PantallaDetalleVehiculo(
                     var ratingInput by remember { mutableIntStateOf(0) }
                     var comentarioInput by remember { mutableStateOf("") }
 
-                    Text("Agregar una reseña", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E293B))
+                    Text("Agregar una reseña", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
                     Spacer(modifier = Modifier.height(12.dp))
 
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -221,7 +240,7 @@ fun PantallaDetalleVehiculo(
                             Icon(
                                 imageVector = if (index <= ratingInput) Icons.Rounded.Star else Icons.Rounded.StarBorder,
                                 contentDescription = null,
-                                tint = if (index <= ratingInput) Color(0xFFF59E0B) else Color.LightGray,
+                                tint = if (index <= ratingInput) WarningColor else TextSecondary.copy(alpha = 0.5f),
                                 modifier = Modifier.size(36.dp).clickable { ratingInput = index }
                             )
                         }
@@ -233,7 +252,13 @@ fun PantallaDetalleVehiculo(
                         onValueChange = { comentarioInput = it },
                         placeholder = { Text("Escribe tu experiencia con el vehículo...") },
                         modifier = Modifier.fillMaxWidth().height(120.dp),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = Color.White,
+                            unfocusedContainerColor = Color.White,
+                            focusedBorderColor = Primary,
+                            cursorColor = Primary
+                        )
                     )
                     Spacer(modifier = Modifier.height(12.dp))
 
@@ -243,9 +268,9 @@ fun PantallaDetalleVehiculo(
                         },
                         enabled = ratingInput > 0 && comentarioInput.isNotBlank(),
                         modifier = Modifier.align(Alignment.End),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2970FF))
+                        colors = ButtonDefaults.buttonColors(containerColor = Primary)
                     ) {
-                        Text("Publicar Reseña")
+                        Text("Publicar Reseña", color = Color.White)
                     }
                     Spacer(modifier = Modifier.height(32.dp))
                 }
@@ -256,33 +281,69 @@ fun PantallaDetalleVehiculo(
 
 @Composable
 fun FeatureCard(modifier: Modifier = Modifier, icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, value: String) {
-    Surface(modifier = modifier.height(76.dp), shape = RoundedCornerShape(12.dp), color = Color(0xFFF1F5F9)) {
+    Card(
+        modifier = modifier.height(76.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
         Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.Start) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(icon, contentDescription = null, tint = Color(0xFF2970FF), modifier = Modifier.size(16.dp))
+                Icon(icon, contentDescription = null, tint = Primary, modifier = Modifier.size(16.dp))
                 Spacer(modifier = Modifier.width(6.dp))
-                Text(text = label, fontSize = 12.sp, color = Color(0xFF64748B), fontWeight = FontWeight.Medium)
+                Text(text = label, fontSize = 12.sp, color = TextSecondary, fontWeight = FontWeight.Medium)
             }
             Spacer(modifier = Modifier.height(4.dp))
-            Text(text = value, fontSize = 14.sp, color = Color(0xFF1E293B), fontWeight = FontWeight.Bold)
+            Text(text = value, fontSize = 14.sp, color = TextPrimary, fontWeight = FontWeight.Bold)
         }
     }
 }
 
+
 @Composable
-fun ResenaCard(autor: String, comentario: String, estrellas: Int) {
+fun ResenaCard(autor: String, comentario: String, estrellas: Int, usuarioId: String) {
+    var fotoBase64 by remember { mutableStateOf("") }
+
+
+    LaunchedEffect(usuarioId) {
+        if (usuarioId.isNotEmpty()) {
+            FirebaseFirestore.getInstance().collection("usuarios").document(usuarioId).get()
+                .addOnSuccessListener { doc ->
+                    if (doc.exists()) {
+                        fotoBase64 = doc.getString("fotoBase64") ?: ""
+                    }
+                }
+        }
+    }
+
     Card(modifier = Modifier.width(260.dp), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(defaultElevation = 1.dp), shape = RoundedCornerShape(12.dp)) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(modifier = Modifier.size(40.dp).clip(CircleShape).background(Color(0xFFE2E8F0)), contentAlignment = Alignment.Center) { Icon(Icons.Filled.Person, contentDescription = null, tint = Color.Gray) }
+                Box(modifier = Modifier.size(40.dp).clip(CircleShape).background(Color(0xFFE2E8F0)), contentAlignment = Alignment.Center) {
+                    val bitmap = decodificarBase64ParaResenas(fotoBase64)
+                    if (bitmap != null) {
+                        Image(bitmap = bitmap.asImageBitmap(), contentDescription = "Perfil", modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                    } else {
+                        Icon(Icons.Filled.Person, contentDescription = null, tint = TextSecondary)
+                    }
+                }
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
-                    Text(autor, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color(0xFF1E293B))
-                    Row { (1..5).forEach { i -> Icon(Icons.Rounded.Star, contentDescription = null, tint = if (i <= estrellas) Color(0xFFF59E0B) else Color.LightGray, modifier = Modifier.size(12.dp)) } }
+                    Text(autor, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = TextPrimary)
+                    Row { (1..5).forEach { i -> Icon(Icons.Rounded.Star, contentDescription = null, tint = if (i <= estrellas) WarningColor else TextSecondary.copy(alpha = 0.5f), modifier = Modifier.size(12.dp)) } }
                 }
             }
             Spacer(modifier = Modifier.height(12.dp))
-            Text(comentario, fontSize = 13.sp, color = Color.Gray, maxLines = 2)
+            Text(comentario, fontSize = 13.sp, color = TextSecondary, maxLines = 2)
         }
     }
+}
+
+
+fun decodificarBase64ParaResenas(base64Str: String): Bitmap? {
+    if (base64Str.isEmpty()) return null
+    return try {
+        val imageBytes = Base64.decode(base64Str, Base64.DEFAULT)
+        BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
+    } catch (e: Exception) { null }
 }

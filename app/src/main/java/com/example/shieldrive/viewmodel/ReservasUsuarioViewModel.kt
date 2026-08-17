@@ -60,7 +60,6 @@ class ReservasUsuarioViewModel(application: Application) : AndroidViewModel(appl
             .addSnapshotListener { snapshot, _ ->
                 if (snapshot != null) {
 
-
                     for (dc in snapshot.documentChanges) {
                         val reserva = dc.document.toObject(Reserva::class.java)
                         val estadoActual = reserva.estado
@@ -68,8 +67,7 @@ class ReservasUsuarioViewModel(application: Application) : AndroidViewModel(appl
                         if (dc.type == DocumentChange.Type.MODIFIED) {
                             val estadoViejo = estadosPrevios[reserva.id]
 
-                            // Si antes no estaba "Confirmada" y ahora sí, ¡DISPARAMOS NOTIFICACIÓN!
-                            // Ojo: Asegúrate de que el texto "Confirmada" sea exactamente el que usas cuando el Admin acepta.
+
                             if (estadoViejo != "Confirmada" && estadoActual == "Confirmada") {
                                 NotificacionHelper.mostrarNotificacion(
                                     context = getApplication<Application>().applicationContext,
@@ -82,11 +80,17 @@ class ReservasUsuarioViewModel(application: Application) : AndroidViewModel(appl
                         estadosPrevios[reserva.id] = estadoActual
                     }
 
-                    // Actualizamos la UI normal
+
                     val reservas = snapshot.documents.mapNotNull { it.toObject(Reserva::class.java) }
                     listaMisReservas = reservas.sortedByDescending { it.timestamp }
                 }
             }
+    }
+
+    fun archivarReserva(reservaId: String) {
+        db.collection("Reservas").document(reservaId)
+            .update("archivada", true)
+
     }
 
     fun calificarReserva(reserva: Reserva, rating: Float, comentario: String) {

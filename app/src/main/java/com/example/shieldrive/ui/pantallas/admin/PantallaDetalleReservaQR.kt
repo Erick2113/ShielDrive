@@ -21,6 +21,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.shieldrive.ui.theme.*
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
@@ -43,7 +44,7 @@ fun PantallaDetalleReservaQR(
     var cargando by remember { mutableStateOf(true) }
     var procesando by remember { mutableStateOf(false) }
 
-    // Variables para la devolución
+
     var observaciones by remember { mutableStateOf("") }
     var multaTotal by remember { mutableIntStateOf(0) }
     var horasTarde by remember { mutableIntStateOf(0) }
@@ -59,86 +60,96 @@ fun PantallaDetalleReservaQR(
             val query = db.collection("Reservas").whereEqualTo("id", idReserva).get().await()
             if (!query.isEmpty) {
                 val doc = query.documents.first()
-                reservaData = doc.data?.plus("docId" to doc.id) // Guardamos el ID del documento de Firebase
+                reservaData = doc.data?.plus("docId" to doc.id)
 
-                // Si el estado es "En uso", calculamos multas
                 val estado = doc.getString("estado") ?: ""
                 if (estado == "En uso") {
                     val fechaFinStr = doc.getString("fechaFin") ?: ""
                     try {
                         val fechaFinMillis = formatoFechaCorta.parse(fechaFinStr)?.time ?: 0L
-                        // Asumimos que la hora límite de entrega son las 12:00 PM (mediodía) de la fecha final
                         val limiteEntregaMillis = fechaFinMillis + (12 * 60 * 60 * 1000)
                         val ahora = System.currentTimeMillis()
 
                         val diferencia = ahora - limiteEntregaMillis
                         if (diferencia > 0) {
                             val horas = (diferencia / (1000 * 60 * 60)).toInt()
-                            if (horas > 1) { // 1 hora de tolerancia
+                            if (horas > 1) {
                                 horasTarde = horas - 1
-                                multaTotal = horasTarde * 5 // $5 por hora extra
+                                multaTotal = horasTarde * 5
                             }
                         }
                     } catch (e: Exception) {}
                 }
             }
         } catch (e: Exception) {
-            Toast.makeText(context, "Error al buscar reserva", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Error al buscar reserva", Toast.LENGTH_LONG).show()
         } finally {
             cargando = false
         }
     }
 
+    val textFieldColors = OutlinedTextFieldDefaults.colors(
+        focusedContainerColor = Color.White,
+        unfocusedContainerColor = Color.White,
+        focusedBorderColor = Primary,
+        unfocusedBorderColor = Color(0xFFE2E8F0),
+        cursorColor = Primary,
+        focusedLabelColor = Primary,
+        unfocusedLabelColor = TextSecondary,
+        focusedTextColor = TextPrimary,
+        unfocusedTextColor = TextPrimary
+    )
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Escáner QR", fontWeight = FontWeight.Bold) },
-                navigationIcon = { IconButton(onClick = onVolver) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null) } },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFFF8FAFC))
+                title = { Text("Escáner QR", fontWeight = FontWeight.Bold, color = TextPrimary) },
+                navigationIcon = { IconButton(onClick = onVolver) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = TextPrimary) } },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
         },
-        containerColor = Color(0xFFF8FAFC)
+        containerColor = Color.Transparent
     ) { padding ->
-        Column(modifier = Modifier.padding(padding).fillMaxSize().padding(24.dp).verticalScroll(rememberScrollState())) {
+        Column(modifier = Modifier.padding(padding).fillMaxSize().background(Color.Transparent).padding(24.dp).verticalScroll(rememberScrollState())) {
 
             if (cargando) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = Primary) }
             } else if (reservaData == null) {
-                Text("No se encontró ninguna reserva con este código.", color = Color.Red, fontSize = 18.sp)
+                Text("No se encontró ninguna reserva con este código.", color = ErrorColor, fontSize = 18.sp)
             } else {
                 val estado = reservaData!!["estado"] as? String ?: ""
                 val docId = reservaData!!["docId"] as String
                 val vehiculoId = reservaData!!["vehiculoId"] as? String ?: ""
                 val clienteNombre = reservaData!!["clienteNombre"] as? String ?: ""
+                // Traemos el ID del usuario y la fecha fin para las notificaciones
+                val usuarioId = reservaData!!["userId"] as? String ?: reservaData!!["usuarioId"] as? String ?: ""
+                val fechaFinStr = reservaData!!["fechaFin"] as? String ?: ""
 
-                // TARJETA DE INFORMACIÓN GENERAL
-                Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color.White)) {
+                Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text("TICKET: $idReserva", color = Color.Gray, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        Text("TICKET: $idReserva", color = TextSecondary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         Spacer(modifier = Modifier.height(12.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Rounded.Person, null, tint = Color(0xFF2970FF)); Spacer(modifier = Modifier.width(8.dp))
-                            Text(clienteNombre, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                            Icon(Icons.Rounded.Person, null, tint = Primary); Spacer(modifier = Modifier.width(8.dp))
+                            Text(clienteNombre, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = TextPrimary)
                         }
                         Spacer(modifier = Modifier.height(8.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Rounded.DirectionsCar, null, tint = Color(0xFF10B981)); Spacer(modifier = Modifier.width(8.dp))
-                            Text(reservaData!!["vehiculoInfo"] as? String ?: "", fontWeight = FontWeight.Medium)
+                            Icon(Icons.Rounded.DirectionsCar, null, tint = SuccessColor); Spacer(modifier = Modifier.width(8.dp))
+                            Text(reservaData!!["vehiculoInfo"] as? String ?: "", fontWeight = FontWeight.Medium, color = TextPrimary)
                         }
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text("Fechas: ${reservaData!!["fechaInicio"]} al ${reservaData!!["fechaFin"]}", color = Color.Gray)
+                        Text("Fechas: ${reservaData!!["fechaInicio"]} al $fechaFinStr", color = TextSecondary)
                     }
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // ==========================================
-                // CASO 1: ENTREGAR VEHÍCULO (Salida)
-                // ==========================================
+
                 if (estado != "En uso" && estado != "Finalizada") {
-                    Text("Acción Requerida: ENTREGAR", fontSize = 20.sp, fontWeight = FontWeight.Black, color = Color(0xFF2970FF))
+                    Text("Acción Requerida: ENTREGAR", fontSize = 20.sp, fontWeight = FontWeight.Black, color = Primary)
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text("El cliente está listo para llevarse el vehículo. Al confirmar, se iniciará el conteo de tiempo.", color = Color.Gray)
+                    Text("Al confirmar la entrega, se le notificará al cliente la fecha y hora límite de devolución.", color = TextSecondary)
 
                     Spacer(modifier = Modifier.height(32.dp))
 
@@ -153,48 +164,48 @@ fun PantallaDetalleReservaQR(
                                 "fechaEntregaReal" to ahoraMillis
                             )
 
-                            val nuevaNotificacion = mapOf(
+
+                            val notificacionSalida = mapOf(
                                 "id" to UUID.randomUUID().toString(),
-                                "usuarioId" to (reservaData!!["usuarioId"] as? String ?: ""),
-                                "titulo" to "Vehículo Entregado",
-                                "mensaje" to "Tu reserva ha iniciado el $ahoraString. Recuerda devolver el auto antes de las 12:00 PM de tu fecha final o se aplicarán cargos.",
+                                "usuarioId" to usuarioId,
+                                "titulo" to "🚗 ¡Vehículo Entregado con Éxito!",
+                                "mensaje" to "Tu viaje ha iniciado hoy $ahoraString. Debes devolver el auto antes de las 12:00 PM del $fechaFinStr o se aplicarán recargos.",
                                 "fecha" to ahoraMillis,
                                 "leida" to false
                             )
 
-                            // Actualizamos Reserva, luego mandamos Notificación
                             db.collection("Reservas").document(docId).update(updatesReserva).addOnSuccessListener {
-                                db.collection("notificaciones").document(nuevaNotificacion["id"] as String).set(nuevaNotificacion)
-                                Toast.makeText(context, "Vehículo entregado con éxito", Toast.LENGTH_LONG).show()
+                                if (usuarioId.isNotEmpty()) {
+                                    db.collection("notificaciones").document(notificacionSalida["id"] as String).set(notificacionSalida)
+                                }
+                                Toast.makeText(context, "Vehículo entregado y notificación enviada", Toast.LENGTH_LONG).show()
                                 onFinalizado()
                             }
                         },
                         modifier = Modifier.fillMaxWidth().height(56.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2970FF)),
+                        colors = ButtonDefaults.buttonColors(containerColor = Primary, disabledContainerColor = Color(0xFFE2E8F0)),
                         enabled = !procesando
                     ) {
-                        if (procesando) CircularProgressIndicator(color = Color.White) else Text("Confirmar Entrega de Vehículo", fontWeight = FontWeight.Bold)
+                        if (procesando) CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp)) else Text("Confirmar Entrega y Notificar", fontWeight = FontWeight.Bold, color = Color.White)
                     }
                 }
 
-                // ==========================================
-                // CASO 2: RECIBIR VEHÍCULO (Entrada)
-                // ==========================================
+
                 else if (estado == "En uso") {
                     val fechaSalidaMillis = reservaData!!["fechaEntregaReal"] as? Long ?: 0L
                     val salidaString = if (fechaSalidaMillis > 0) formatoFechaHora.format(Date(fechaSalidaMillis)) else "Desconocida"
 
-                    Text("Acción Requerida: DEVOLUCIÓN", fontSize = 20.sp, fontWeight = FontWeight.Black, color = Color(0xFF10B981))
+                    Text("Acción Requerida: DEVOLUCIÓN", fontSize = 20.sp, fontWeight = FontWeight.Black, color = SuccessColor)
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text("Salida registrada: $salidaString", color = Color.Gray)
+                    Text("Salida registrada: $salidaString", color = TextSecondary)
 
                     if (multaTotal > 0) {
-                        Card(modifier = Modifier.fillMaxWidth().padding(top = 16.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFFFEF2F2))) {
+                        Card(modifier = Modifier.fillMaxWidth().padding(top = 16.dp), colors = CardDefaults.cardColors(containerColor = ErrorColor.copy(alpha = 0.1f)), elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)) {
                             Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Filled.Warning, null, tint = Color.Red); Spacer(modifier = Modifier.width(8.dp))
+                                Icon(Icons.Filled.Warning, null, tint = ErrorColor); Spacer(modifier = Modifier.width(8.dp))
                                 Column {
-                                    Text("Entrega Tardía ($horasTarde horas)", color = Color.Red, fontWeight = FontWeight.Bold)
-                                    Text("Multa a cobrar: $$multaTotal", color = Color.Red, fontSize = 18.sp, fontWeight = FontWeight.Black)
+                                    Text("Entrega Tardía ($horasTarde horas)", color = ErrorColor, fontWeight = FontWeight.Bold)
+                                    Text("Multa a cobrar: $$multaTotal", color = ErrorColor, fontSize = 18.sp, fontWeight = FontWeight.Black)
                                 }
                             }
                         }
@@ -206,7 +217,8 @@ fun PantallaDetalleReservaQR(
                         onValueChange = { observaciones = it },
                         label = { Text("Observaciones del vehículo (Daños, gasolina, etc)") },
                         modifier = Modifier.fillMaxWidth().height(120.dp),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(12.dp),
+                        colors = textFieldColors
                     )
 
                     Spacer(modifier = Modifier.height(32.dp))
@@ -229,31 +241,42 @@ fun PantallaDetalleReservaQR(
                                 "multaCobrada" to multaTotal
                             )
 
-                            // Actualizamos Reserva -> Liberamos Vehículo -> Guardamos Bitácora
+                            // Notificación de viaje finalizado
+                            val notificacionFin = mapOf(
+                                "id" to UUID.randomUUID().toString(),
+                                "usuarioId" to usuarioId,
+                                "titulo" to "✅ Vehículo Devuelto",
+                                "mensaje" to "Has completado tu alquiler con éxito. ¡Gracias por confiar en ShielDrive!",
+                                "fecha" to ahoraMillis,
+                                "leida" to false
+                            )
+
                             db.collection("Reservas").document(docId).update(updatesReserva).addOnSuccessListener {
                                 db.collection("vehiculos").document(vehiculoId).update("estado", "Disponible")
                                 db.collection("bitacoras").document(bitacora["id"] as String).set(bitacora)
+
+                                if (usuarioId.isNotEmpty()) {
+                                    db.collection("notificaciones").document(notificacionFin["id"] as String).set(notificacionFin)
+                                }
 
                                 Toast.makeText(context, "Vehículo recibido y bitácora guardada", Toast.LENGTH_LONG).show()
                                 onFinalizado()
                             }
                         },
                         modifier = Modifier.fillMaxWidth().height(56.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
+                        colors = ButtonDefaults.buttonColors(containerColor = SuccessColor, disabledContainerColor = Color(0xFFE2E8F0)),
                         enabled = !procesando
                     ) {
-                        if (procesando) CircularProgressIndicator(color = Color.White) else Text("Aceptar Carro y Finalizar", fontWeight = FontWeight.Bold)
+                        if (procesando) CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp)) else Text("Aceptar Carro y Finalizar", fontWeight = FontWeight.Bold, color = Color.White)
                     }
                 }
 
-                // ==========================================
-                // CASO 3: YA ESTÁ FINALIZADA
-                // ==========================================
+
                 else {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth().padding(top = 32.dp)) {
-                        Icon(Icons.Rounded.CheckCircle, null, tint = Color.Gray, modifier = Modifier.size(64.dp))
+                        Icon(Icons.Rounded.CheckCircle, null, tint = TextSecondary.copy(alpha = 0.5f), modifier = Modifier.size(64.dp))
                         Spacer(modifier = Modifier.height(16.dp))
-                        Text("Esta reserva ya fue finalizada.", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = Color.Gray)
+                        Text("Esta reserva ya fue finalizada.", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = TextSecondary)
                     }
                 }
             }

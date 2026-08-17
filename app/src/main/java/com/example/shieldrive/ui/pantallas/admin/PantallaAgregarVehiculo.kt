@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.shieldrive.model.Vehiculo
+import com.example.shieldrive.ui.theme.*
 import com.example.shieldrive.viewmodel.FlotaViewModel
 import org.json.JSONObject
 import kotlinx.coroutines.Dispatchers
@@ -74,31 +75,46 @@ fun PantallaAgregarVehiculo(onVolver: () -> Unit, flotaViewModel: FlotaViewModel
         if (uri != null) { imageUri = uri }
     }
 
+
+    val textFieldColors = OutlinedTextFieldDefaults.colors(
+        focusedContainerColor = Color.White,
+        unfocusedContainerColor = Color.White,
+        focusedBorderColor = Primary,
+        unfocusedBorderColor = Color(0xFFE2E8F0), // Borde gris claro
+        cursorColor = Primary,
+        focusedLabelColor = Primary,
+        focusedLeadingIconColor = Primary,
+        unfocusedLeadingIconColor = TextSecondary,
+        focusedTextColor = TextPrimary,
+        unfocusedTextColor = TextPrimary
+    )
+
     Scaffold(
         topBar = {
             Column {
                 TopAppBar(
-                    title = { Text("Nuevo Vehículo", fontWeight = FontWeight.Bold) },
+                    title = { Text("Nuevo Vehículo", fontWeight = FontWeight.Bold, color = TextPrimary) },
                     navigationIcon = {
                         IconButton(onClick = onVolver, enabled = !guardando) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver", tint = TextPrimary)
                         }
                     },
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent) // TRANSPARENTE
                 )
                 LinearProgressIndicator(
                     progress = { progreso },
                     modifier = Modifier.fillMaxWidth().height(4.dp),
-                    color = Color(0xFF2970FF),
-                    trackColor = Color(0xFFF1F5F9)
+                    color = Primary, // AZUL CORPORATIVO
+                    trackColor = Primary.copy(alpha = 0.2f)
                 )
             }
         },
-        containerColor = Color.White
+        containerColor = Color.Transparent
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .background(Color.Transparent)
                 .padding(paddingValues)
                 .padding(24.dp)
                 .verticalScroll(rememberScrollState())
@@ -107,7 +123,7 @@ fun PantallaAgregarVehiculo(onVolver: () -> Unit, flotaViewModel: FlotaViewModel
                 text = "PASO $pasoActual DE $totalPasos",
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF2970FF),
+                color = Primary,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
 
@@ -119,8 +135,8 @@ fun PantallaAgregarVehiculo(onVolver: () -> Unit, flotaViewModel: FlotaViewModel
                 when (paso) {
                     1 -> {
                         Column {
-                            Text("Identificación VIN", fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                            Text("Escanea o escribe el VIN para autocompletar la ficha técnica.", color = Color.Gray, modifier = Modifier.padding(top = 4.dp, bottom = 24.dp))
+                            Text("Identificación VIN", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                            Text("Escanea o escribe el VIN para autocompletar la ficha técnica.", color = TextSecondary, modifier = Modifier.padding(top = 4.dp, bottom = 24.dp))
 
                             OutlinedTextField(
                                 value = vin,
@@ -131,11 +147,12 @@ fun PantallaAgregarVehiculo(onVolver: () -> Unit, flotaViewModel: FlotaViewModel
                                 modifier = Modifier.fillMaxWidth(),
                                 isError = errorVin,
                                 shape = RoundedCornerShape(16.dp),
-                                singleLine = true
+                                singleLine = true,
+                                colors = textFieldColors
                             )
 
                             if (errorVin) {
-                                Text("No encontramos este vehículo. Verifica el VIN.", color = Color.Red, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
+                                Text("No encontramos este vehículo. Verifica el VIN.", color = ErrorColor, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
                             }
 
                             Spacer(modifier = Modifier.height(32.dp))
@@ -143,7 +160,6 @@ fun PantallaAgregarVehiculo(onVolver: () -> Unit, flotaViewModel: FlotaViewModel
                             Button(
                                 onClick = {
                                     buscando = true
-
                                     coroutineScope.launch {
                                         try {
                                             val url = "https://vpic.nhtsa.dot.gov/api/vehicles/decodevin/$vin?format=json"
@@ -198,29 +214,29 @@ fun PantallaAgregarVehiculo(onVolver: () -> Unit, flotaViewModel: FlotaViewModel
                                 },
                                 modifier = Modifier.fillMaxWidth().height(56.dp),
                                 shape = RoundedCornerShape(16.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2970FF)),
+                                colors = ButtonDefaults.buttonColors(containerColor = Primary, disabledContainerColor = Color(0xFFE2E8F0)),
                                 enabled = vin.isNotEmpty() && !buscando
                             ) {
                                 if (buscando) CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
-                                else Text("Buscar Datos", fontWeight = FontWeight.Bold)
+                                else Text("Buscar Datos", fontWeight = FontWeight.Bold, color = Color.White)
                             }
 
                             TextButton(onClick = { pasoActual = 2 }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                                Text("Omitir y llenar manualmente", color = Color.Gray)
+                                Text("Omitir y llenar manualmente", color = TextSecondary)
                             }
                         }
                     }
                     2 -> {
                         Column {
-                            Text("Detalles técnicos", fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                            Text("Sube una foto clara y verifica los datos del auto.", color = Color.Gray, modifier = Modifier.padding(top = 4.dp, bottom = 24.dp))
+                            Text("Detalles técnicos", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                            Text("Sube una foto clara y verifica los datos del auto.", color = TextSecondary, modifier = Modifier.padding(top = 4.dp, bottom = 24.dp))
 
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(180.dp)
                                     .clip(RoundedCornerShape(20.dp))
-                                    .background(Color(0xFFF1F5F9))
+                                    .background(Color(0xFFE2E8F0))
                                     .clickable { photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                                 contentAlignment = Alignment.Center
                             ) {
@@ -228,46 +244,45 @@ fun PantallaAgregarVehiculo(onVolver: () -> Unit, flotaViewModel: FlotaViewModel
                                     AsyncImage(model = imageUri, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                                 } else {
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Icon(Icons.Default.DirectionsCar, null, modifier = Modifier.size(40.dp), tint = Color.LightGray)
-                                        Text("Añadir Foto", color = Color.Gray, fontSize = 14.sp)
+                                        Icon(Icons.Default.DirectionsCar, null, modifier = Modifier.size(40.dp), tint = TextSecondary)
+                                        Text("Añadir Foto", color = TextSecondary, fontSize = 14.sp)
                                     }
                                 }
                             }
 
                             Spacer(modifier = Modifier.height(24.dp))
 
-                            OutlinedTextField(value = marca, onValueChange = { marca = it }, label = { Text("Marca") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
-                            OutlinedTextField(value = modelo, onValueChange = { modelo = it }, label = { Text("Modelo") }, modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp), shape = RoundedCornerShape(12.dp))
+                            OutlinedTextField(value = marca, onValueChange = { marca = it }, label = { Text("Marca") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), colors = textFieldColors)
+                            OutlinedTextField(value = modelo, onValueChange = { modelo = it }, label = { Text("Modelo") }, modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp), shape = RoundedCornerShape(12.dp), colors = textFieldColors)
 
                             Row(modifier = Modifier.fillMaxWidth()) {
-                                OutlinedTextField(value = anio, onValueChange = { anio = it }, label = { Text("Año") }, modifier = Modifier.weight(1f).padding(end = 8.dp), shape = RoundedCornerShape(12.dp), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
-                                OutlinedTextField(value = numAsientos, onValueChange = { numAsientos = it }, label = { Text("Asientos") }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+                                OutlinedTextField(value = anio, onValueChange = { anio = it }, label = { Text("Año") }, modifier = Modifier.weight(1f).padding(end = 8.dp), shape = RoundedCornerShape(12.dp), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), colors = textFieldColors)
+                                OutlinedTextField(value = numAsientos, onValueChange = { numAsientos = it }, label = { Text("Asientos") }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), colors = textFieldColors)
                             }
 
                             Spacer(modifier = Modifier.height(12.dp))
 
-
-                            OutlinedTextField(value = transmision, onValueChange = { transmision = it }, label = { Text("Transmisión (Ej. Automática)") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
-                            OutlinedTextField(value = motor, onValueChange = { motor = it }, label = { Text("Motor (Ej. V6 3.0L)") }, modifier = Modifier.fillMaxWidth().padding(top = 12.dp), shape = RoundedCornerShape(12.dp))
+                            OutlinedTextField(value = transmision, onValueChange = { transmision = it }, label = { Text("Transmisión (Ej. Automática)") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), colors = textFieldColors)
+                            OutlinedTextField(value = motor, onValueChange = { motor = it }, label = { Text("Motor (Ej. V6 3.0L)") }, modifier = Modifier.fillMaxWidth().padding(top = 12.dp), shape = RoundedCornerShape(12.dp), colors = textFieldColors)
 
                             Spacer(modifier = Modifier.height(32.dp))
 
                             Row(modifier = Modifier.fillMaxWidth()) {
-                                TextButton(onClick = { pasoActual = 1 }, modifier = Modifier.weight(1f)) { Text("Atrás", color = Color.Gray) }
+                                TextButton(onClick = { pasoActual = 1 }, modifier = Modifier.weight(1f)) { Text("Atrás", color = TextSecondary) }
                                 Button(
                                     onClick = { pasoActual = 3 },
                                     modifier = Modifier.weight(2f).height(56.dp),
                                     shape = RoundedCornerShape(16.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2970FF)),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Primary, disabledContainerColor = Color(0xFFE2E8F0)),
                                     enabled = marca.isNotEmpty() && modelo.isNotEmpty()
-                                ) { Text("Siguiente", fontWeight = FontWeight.Bold) }
+                                ) { Text("Siguiente", fontWeight = FontWeight.Bold, color = if (marca.isNotEmpty() && modelo.isNotEmpty()) Color.White else TextSecondary) }
                             }
                         }
                     }
                     3 -> {
                         Column {
-                            Text("Precio y descripción", fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                            Text("Establece la tarifa y lo que hace especial a este vehículo.", color = Color.Gray, modifier = Modifier.padding(top = 4.dp, bottom = 24.dp))
+                            Text("Precio y descripción", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                            Text("Establece la tarifa y lo que hace especial a este vehículo.", color = TextSecondary, modifier = Modifier.padding(top = 4.dp, bottom = 24.dp))
 
                             OutlinedTextField(
                                 value = precio,
@@ -277,7 +292,8 @@ fun PantallaAgregarVehiculo(onVolver: () -> Unit, flotaViewModel: FlotaViewModel
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(16.dp),
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                singleLine = true
+                                singleLine = true,
+                                colors = textFieldColors
                             )
 
                             OutlinedTextField(
@@ -285,13 +301,14 @@ fun PantallaAgregarVehiculo(onVolver: () -> Unit, flotaViewModel: FlotaViewModel
                                 onValueChange = { descripcion = it },
                                 label = { Text("Descripción") },
                                 modifier = Modifier.fillMaxWidth().height(120.dp).padding(vertical = 16.dp),
-                                shape = RoundedCornerShape(16.dp)
+                                shape = RoundedCornerShape(16.dp),
+                                colors = textFieldColors
                             )
 
                             Spacer(modifier = Modifier.height(32.dp))
 
                             Row(modifier = Modifier.fillMaxWidth()) {
-                                TextButton(onClick = { pasoActual = 2 }, enabled = !guardando, modifier = Modifier.weight(1f)) { Text("Atrás", color = Color.Gray) }
+                                TextButton(onClick = { pasoActual = 2 }, enabled = !guardando, modifier = Modifier.weight(1f)) { Text("Atrás", color = TextSecondary) }
                                 Button(
                                     onClick = {
                                         guardando = true
@@ -313,11 +330,11 @@ fun PantallaAgregarVehiculo(onVolver: () -> Unit, flotaViewModel: FlotaViewModel
                                     },
                                     modifier = Modifier.weight(2f).height(56.dp),
                                     shape = RoundedCornerShape(16.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
+                                    colors = ButtonDefaults.buttonColors(containerColor = SuccessColor, disabledContainerColor = Color(0xFFE2E8F0)),
                                     enabled = precio.isNotEmpty() && !guardando
                                 ) {
                                     if (guardando) CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
-                                    else Text("Guardar Vehículo", fontWeight = FontWeight.Bold)
+                                    else Text("Guardar Vehículo", fontWeight = FontWeight.Bold, color = if (precio.isNotEmpty() && !guardando) Color.White else TextSecondary)
                                 }
                             }
                         }

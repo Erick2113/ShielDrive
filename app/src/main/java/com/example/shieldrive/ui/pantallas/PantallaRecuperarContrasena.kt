@@ -14,6 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -21,6 +22,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.shieldrive.ui.theme.*
 import com.example.shieldrive.viewmodel.AuthViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -35,23 +37,28 @@ fun PantallaRecuperarContrasena(
 
     val correoValido = correo.isNotBlank() && correo.contains("@")
 
-    // Paleta de colores
-    val colorPrimario = Color(0xFF2970FF)
-    val colorFondo = Color(0xFFF8FAFC)
+    // Fondo Degradado
+    val fondoDegradado = Brush.verticalGradient(
+        colors = listOf(
+            Color(0xFFE0F2FE),
+            Color(0xFFFFFFFF)
+        )
+    )
 
     Scaffold(
+        modifier = Modifier.fillMaxSize().background(fondoDegradado),
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
                 title = { Text("", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onVolver) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver", tint = MaterialTheme.colorScheme.onBackground)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = colorFondo)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
-        },
-        containerColor = colorFondo
+        }
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -66,13 +73,13 @@ fun PantallaRecuperarContrasena(
             Text(
                 text = "Recuperar cuenta",
                 style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
-                color = Color.Black
+                color = MaterialTheme.colorScheme.onBackground
             )
 
             Text(
                 text = "Ingresa el correo electrónico asociado a tu cuenta y te enviaremos un enlace para restablecer tu contraseña.",
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color.Gray,
+                color = TextSecondary,
                 modifier = Modifier.padding(top = 8.dp, bottom = 32.dp)
             )
 
@@ -80,11 +87,16 @@ fun PantallaRecuperarContrasena(
                 value = correo,
                 onValueChange = { correo = it },
                 label = { Text("Correo electrónico") },
-                leadingIcon = { Icon(Icons.Rounded.Email, contentDescription = "Email", tint = Color.Gray) },
+                leadingIcon = { Icon(Icons.Rounded.Email, contentDescription = "Email", tint = TextSecondary) },
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                 shape = RoundedCornerShape(16.dp),
-                singleLine = true
+                singleLine = true,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = Color.White,
+                    unfocusedContainerColor = Color.White,
+                    focusedBorderColor = MaterialTheme.colorScheme.primary
+                )
             )
 
             Spacer(modifier = Modifier.height(40.dp))
@@ -108,16 +120,16 @@ fun PantallaRecuperarContrasena(
                     .height(56.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = colorPrimario,
-                    disabledContainerColor = Color(0xFFF3F4F6)
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    disabledContainerColor = Color(0xFFE2E8F0)
                 )
             ) {
                 if (cargando) {
-                    CircularProgressIndicator(color = colorPrimario, modifier = Modifier.size(24.dp))
+                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
                 } else {
                     Text(
                         text = "Enviar enlace",
-                        color = if (correoValido) Color.White else Color.Gray,
+                        color = if (correoValido) Color.White else TextSecondary,
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp
                     )

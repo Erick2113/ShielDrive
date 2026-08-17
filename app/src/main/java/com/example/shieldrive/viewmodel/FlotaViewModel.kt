@@ -79,7 +79,7 @@ class FlotaViewModel : ViewModel() {
             var vehiculoFinal = vehiculo
 
             withContext(Dispatchers.Main) {
-                Toast.makeText(context, "Procesando imagen para subida rápida...", Toast.LENGTH_SHORT).show()
+                android.widget.Toast.makeText(context, "Procesando imagen para subida rápida...", android.widget.Toast.LENGTH_LONG).show()
             }
 
             try {
@@ -111,7 +111,7 @@ class FlotaViewModel : ViewModel() {
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                    android.widget.Toast.makeText(context, "Error: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
                     onResultado(false)
                 }
             }
@@ -125,11 +125,11 @@ class FlotaViewModel : ViewModel() {
 
         docRef.set(vehiculoConId)
             .addOnSuccessListener {
-                Toast.makeText(context, "¡Guardado con éxito!", Toast.LENGTH_SHORT).show()
+                android.widget.Toast.makeText(context, "¡Guardado con éxito!", android.widget.Toast.LENGTH_LONG).show()
                 onResultado(true)
             }
             .addOnFailureListener { e ->
-                Toast.makeText(context, "Error de red: ${e.message}", Toast.LENGTH_LONG).show()
+                android.widget.Toast.makeText(context, "Error de red: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
                 onResultado(false)
             }
     }

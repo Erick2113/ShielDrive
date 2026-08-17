@@ -44,14 +44,14 @@ fun PantallaEscanerQR(
     val contexto = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     var tienePermiso by remember { mutableStateOf(false) }
-    var escaneado by remember { mutableStateOf(false) } // Para evitar que escanee 100 veces el mismo
+    var escaneado by remember { mutableStateOf(false) }
 
     val launcherPermiso = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         tienePermiso = isGranted
         if (!isGranted) {
-            Toast.makeText(contexto, "Se necesita la cámara para escanear", Toast.LENGTH_LONG).show()
+            android.widget.Toast.makeText(contexto, "Se necesita la cámara para escanear", android.widget.Toast.LENGTH_LONG).show()
             onVolver()
         }
     }
@@ -62,9 +62,7 @@ fun PantallaEscanerQR(
 
     if (tienePermiso) {
         Box(modifier = Modifier.fillMaxSize()) {
-            // ==========================================
-            // VISTA DE LA CÁMARA NATIVA
-            // ==========================================
+
             AndroidView(
                 factory = { ctx ->
                     val previewView = PreviewView(ctx)
@@ -85,7 +83,7 @@ fun PantallaEscanerQR(
                             Executors.newSingleThreadExecutor(),
                             QrCodeAnalyzer { qrResultado ->
                                 if (!escaneado) {
-                                    escaneado = true // Lo bloqueamos para que no envíe el código 10 veces por segundo
+                                    escaneado = true
                                     onQrEscaneado(qrResultado)
                                 }
                             }
@@ -102,7 +100,7 @@ fun PantallaEscanerQR(
                                 imageAnalysis
                             )
                         } catch (e: Exception) {
-                            Toast.makeText(ctx, "Error al iniciar cámara", Toast.LENGTH_SHORT).show()
+                            android.widget.Toast.makeText(ctx, "Error al iniciar cámara", android.widget.Toast.LENGTH_LONG).show()
                         }
                     }, ContextCompat.getMainExecutor(ctx))
 
@@ -111,13 +109,11 @@ fun PantallaEscanerQR(
                 modifier = Modifier.fillMaxSize()
             )
 
-            // ==========================================
-            // DISEÑO VISUAL (Fondo oscuro con agujero)
-            // ==========================================
+
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.5f)) // Oscurecemos la pantalla
+                    .background(Color.Black.copy(alpha = 0.5f))
             )
 
             Canvas(modifier = Modifier.fillMaxSize()) {
@@ -126,7 +122,7 @@ fun PantallaEscanerQR(
                 val offsetX = (size.width - anchoCaja) / 2
                 val offsetY = (size.height - altoCaja) / 2
 
-                // Hacemos el recorte transparente en el centro
+
                 drawRoundRect(
                     color = Color.Transparent,
                     topLeft = Offset(offsetX, offsetY),
@@ -135,7 +131,7 @@ fun PantallaEscanerQR(
                     blendMode = androidx.compose.ui.graphics.BlendMode.Clear
                 )
 
-                // Dibujamos un borde azul premium alrededor del cuadro
+
                 drawRoundRect(
                     color = Color(0xFF2970FF),
                     topLeft = Offset(offsetX, offsetY),
@@ -145,9 +141,7 @@ fun PantallaEscanerQR(
                 )
             }
 
-            // ==========================================
-            // INTERFAZ Y BOTONES
-            // ==========================================
+
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -186,9 +180,6 @@ fun PantallaEscanerQR(
     }
 }
 
-// ==========================================
-// EL CEREBRO DE LA IA PARA LEER EL QR
-// ==========================================
 @OptIn(ExperimentalGetImage::class)
 class QrCodeAnalyzer(
     private val onQrCodeScanned: (String) -> Unit
@@ -215,7 +206,7 @@ class QrCodeAnalyzer(
                     }
                 }
                 .addOnCompleteListener {
-                    imageProxy.close() // Siempre cerrar la imagen para que la cámara no se trabe
+                    imageProxy.close()
                 }
         } else {
             imageProxy.close()

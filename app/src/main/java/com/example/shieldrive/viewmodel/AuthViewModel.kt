@@ -35,7 +35,7 @@ class AuthViewModel : ViewModel() {
                 if (task.isSuccessful) {
                     val firebaseUser = auth.currentUser
                     if (firebaseUser != null) {
-                        // Sincronizamos el nombre en Firebase Auth inmediatamente
+
                         val profileUpdates = UserProfileChangeRequest.Builder()
                             .setDisplayName(nombre.trim())
                             .build()
@@ -94,8 +94,14 @@ class AuthViewModel : ViewModel() {
                             .addOnSuccessListener { document ->
                                 _cargando.value = false
                                 if (document != null && document.exists()) {
+                                    // AQUÍ ESTÁ EL ARREGLO:
+                                    // Verificamos si tiene "rol = admin" O si tiene "esAdmin = true"
                                     val rol = document.getString("rol") ?: "cliente"
-                                    onExito(rol == "admin")
+                                    val esAdminFirebase = document.getBoolean("esAdmin") == true
+
+                                    val esAdministrador = (rol == "admin" || esAdminFirebase)
+
+                                    onExito(esAdministrador)
                                 } else {
                                     onExito(false)
                                 }

@@ -13,5 +13,7 @@ data class Reserva(
     val totalMonto: String = "",
     val estado: String = "Activa",
     val calificada: Boolean = false,
+    val archivada: Boolean = false,
+    val ocultaAdmin: Boolean = false,
     val timestamp: Long = System.currentTimeMillis()
 )

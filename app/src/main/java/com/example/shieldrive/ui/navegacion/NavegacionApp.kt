@@ -1,11 +1,15 @@
 package com.example.shieldrive.ui.navegacion
 
 import android.widget.Toast
+import com.example.shieldrive.ui.theme.*
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -34,13 +38,14 @@ import com.example.shieldrive.ui.pantallas.admin.PantallaAdminReservas
 import com.example.shieldrive.ui.pantallas.admin.PantallaAdminConfiguracion
 import com.example.shieldrive.ui.pantallas.admin.PantallaAgregarVehiculo
 import com.example.shieldrive.ui.pantallas.admin.PantallaEscanerQR
-import com.example.shieldrive.ui.pantallas.admin.PantallaDetalleReservaQR // <-- NUEVO
-import com.example.shieldrive.ui.pantallas.admin.PantallaSeleccionVehiculoBitacora // <-- NUEVO
-import com.example.shieldrive.ui.pantallas.admin.PantallaBitacoraEspecifica // <-- NUEVO
+import com.example.shieldrive.ui.pantallas.admin.PantallaDetalleReservaQR
+import com.example.shieldrive.ui.pantallas.admin.PantallaSeleccionVehiculoBitacora
+import com.example.shieldrive.ui.pantallas.admin.PantallaBitacoraEspecifica
 import com.example.shieldrive.viewmodel.FlotaViewModel
 import com.example.shieldrive.viewmodel.FavoritosViewModel
 import com.example.shieldrive.viewmodel.ResenasGlobalViewModel
 import com.example.shieldrive.viewmodel.ReservasUsuarioViewModel
+import com.google.firebase.firestore.FirebaseFirestore
 
 @Composable
 fun ShielDriveApp() {
@@ -139,8 +144,9 @@ fun ShielDriveApp() {
 
         composable("admin_principal") {
             PantallaAdminContenedor(
+                rootNavController = navController,
                 onAgregarClick = { navController.navigate(RutaAdminMenu.AgregarVehiculo.ruta) },
-                flotaViewModel = flotaViewModelGlobal // <-- SE LO PASAMOS AL ADMIN AHORA
+                flotaViewModel = flotaViewModelGlobal
             )
         }
         composable(RutaAdminMenu.AgregarVehiculo.ruta) { PantallaAgregarVehiculo(onVolver = { navController.popBackStack() }) }
@@ -158,9 +164,19 @@ fun PantallaPrincipalContenedor(
     val tabNavController = rememberNavController()
     val itemsMenu = listOf(RutaMenu.Inicio, RutaMenu.Reservas, RutaMenu.Favoritos, RutaMenu.Perfil)
 
+
+    val fondoDegradado = Brush.verticalGradient(
+        colors = listOf(
+            Color(0xFFE0F2FE),
+            Color(0xFFFFFFFF)
+        )
+    )
+
     Scaffold(
+        modifier = Modifier.fillMaxSize().background(fondoDegradado),
+        containerColor = Color.Transparent, // Hacemos el Scaffold transparente
         bottomBar = {
-            NavigationBar(containerColor = Color.White, contentColor = Color(0xFF2970FF)) {
+            NavigationBar(containerColor = DarkSurface, contentColor = Color.White) {
                 val navBackStackEntry by tabNavController.currentBackStackEntryAsState()
                 val rutaActual = navBackStackEntry?.destination?.route
 
@@ -170,7 +186,13 @@ fun PantallaPrincipalContenedor(
                         label = { Text(item.titulo) },
                         selected = rutaActual == item.ruta,
                         onClick = { tabNavController.navigate(item.ruta) { popUpTo(tabNavController.graph.findStartDestination().id) { saveState = true }; launchSingleTop = true; restoreState = true } },
-                        colors = NavigationBarItemDefaults.colors(selectedIconColor = Color(0xFF2970FF), selectedTextColor = Color(0xFF2970FF), unselectedIconColor = Color.Gray, unselectedTextColor = Color.Gray, indicatorColor = Color(0xFFE0E7FF))
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = Accent,
+                            selectedTextColor = Accent,
+                            unselectedIconColor = Color.LightGray,
+                            unselectedTextColor = Color.LightGray,
+                            indicatorColor = PrimaryDark
+                        )
                     )
                 }
             }
@@ -178,12 +200,13 @@ fun PantallaPrincipalContenedor(
     ) { paddingValues ->
         NavHost(navController = tabNavController, startDestination = RutaMenu.Inicio.ruta, modifier = Modifier.padding(paddingValues)) {
             composable(RutaMenu.Inicio.ruta) {
+
                 PantallaInicio(
-                    rootNavController,
-                    flotaViewModel,
-                    reservasViewModel,
-                    favoritosViewModel,
-                    resenasViewModel
+                    navController = rootNavController,
+                    flotaViewModel = flotaViewModel,
+                    reservasViewModel = reservasViewModel,
+                    favoritosViewModel = favoritosViewModel,
+                    resenasViewModel = resenasViewModel
                 )
             }
             composable(RutaMenu.Reservas.ruta) {
@@ -199,6 +222,7 @@ fun PantallaPrincipalContenedor(
             composable(RutaMenu.Perfil.ruta) {
                 PantallaPerfil(
                     resenasViewModel = resenasViewModel,
+                    reservasViewModel = reservasViewModel,
                     onLogout = { rootNavController.navigate(Ruta.Login.ruta) { popUpTo(0) { inclusive = true } } }
                 )
             }
@@ -206,24 +230,71 @@ fun PantallaPrincipalContenedor(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PantallaAdminContenedor(onAgregarClick: () -> Unit, flotaViewModel: FlotaViewModel) {
+fun PantallaAdminContenedor(
+    rootNavController: NavHostController,
+    onAgregarClick: () -> Unit,
+    flotaViewModel: FlotaViewModel
+) {
     val tabNavController = rememberNavController()
     val itemsMenuAdmin = listOf(RutaAdminMenu.Dashboard, RutaAdminMenu.Flota, RutaAdminMenu.Reservas, RutaAdminMenu.Configuracion)
 
+    val db = FirebaseFirestore.getInstance()
+    var reservasPendientes by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(Unit) {
+        db.collection("Reservas")
+            .whereEqualTo("estado", "En proceso de autorización")
+            .addSnapshotListener { snapshot, _ ->
+                if (snapshot != null) {
+                    reservasPendientes = snapshot.documents.count { doc ->
+                        doc.getBoolean("ocultaAdmin") != true
+                    }
+                }
+            }
+    }
+
+
+    val fondoDegradado = Brush.verticalGradient(
+        colors = listOf(
+            Color(0xFFE0F2FE),
+            Color(0xFFFFFFFF)
+        )
+    )
+
     Scaffold(
+        modifier = Modifier.fillMaxSize().background(fondoDegradado),
+        containerColor = Color.Transparent, // Hacemos el Scaffold transparente
         bottomBar = {
-            NavigationBar(containerColor = Color(0xFF1E293B), contentColor = Color.White) {
+            NavigationBar(containerColor = DarkSurface, contentColor = Color.White) {
                 val navBackStackEntry by tabNavController.currentBackStackEntryAsState()
                 val rutaActual = navBackStackEntry?.destination?.route
 
                 itemsMenuAdmin.forEach { item ->
                     NavigationBarItem(
-                        icon = { Icon(item.icono, contentDescription = item.titulo) },
+                        icon = {
+                            if (item.ruta == RutaAdminMenu.Reservas.ruta && reservasPendientes > 0) {
+                                BadgedBox(
+
+                                    badge = { Badge(containerColor = ErrorColor, contentColor = Color.White) { Text(reservasPendientes.toString()) } }
+                                ) {
+                                    Icon(item.icono, contentDescription = item.titulo)
+                                }
+                            } else {
+                                Icon(item.icono, contentDescription = item.titulo)
+                            }
+                        },
                         label = { Text(item.titulo) },
                         selected = rutaActual == item.ruta,
                         onClick = { tabNavController.navigate(item.ruta) { popUpTo(tabNavController.graph.findStartDestination().id) { saveState = true }; launchSingleTop = true; restoreState = true } },
-                        colors = NavigationBarItemDefaults.colors(selectedIconColor = Color.White, selectedTextColor = Color.White, unselectedIconColor = Color.Gray, unselectedTextColor = Color.Gray, indicatorColor = Color(0xFF334155))
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = Accent,
+                            selectedTextColor = Accent,
+                            unselectedIconColor = Color.LightGray,
+                            unselectedTextColor = Color.LightGray,
+                            indicatorColor = PrimaryDark
+                        )
                     )
                 }
             }
@@ -232,29 +303,36 @@ fun PantallaAdminContenedor(onAgregarClick: () -> Unit, flotaViewModel: FlotaVie
         NavHost(navController = tabNavController, startDestination = RutaAdminMenu.Dashboard.ruta, modifier = Modifier.padding(paddingValues)) {
             composable(RutaAdminMenu.Dashboard.ruta) { PantallaAdminDashboard() }
 
-
             composable(RutaAdminMenu.Flota.ruta) {
                 PantallaAdminFlota(
                     onAgregarVehiculo = onAgregarClick,
                     onAbrirEscaner = { tabNavController.navigate("escaner_qr") },
-                    onAbrirHistorialVehiculos = { tabNavController.navigate("seleccion_historial") } // <-- NUEVO
+                    onAbrirHistorialVehiculos = { tabNavController.navigate("seleccion_historial") },
+                    flotaViewModel = flotaViewModel
                 )
             }
 
             composable(RutaAdminMenu.Reservas.ruta) { PantallaAdminReservas() }
-            composable(RutaAdminMenu.Configuracion.ruta) { PantallaAdminConfiguracion() }
 
+            composable(RutaAdminMenu.Configuracion.ruta) {
+                PantallaAdminConfiguracion(
+                    onLogout = {
+                        rootNavController.navigate(Ruta.Login.ruta) {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    }
+                )
+            }
 
             composable("escaner_qr") {
                 PantallaEscanerQR(
                     onVolver = { tabNavController.popBackStack() },
                     onQrEscaneado = { idReserva ->
-                        tabNavController.popBackStack() // Regresa a Flota al leerlo
-                        tabNavController.navigate("detalle_qr/$idReserva") // <-- SALTA A LOS DETALLES
+                        tabNavController.popBackStack()
+                        tabNavController.navigate("detalle_qr/$idReserva")
                     }
                 )
             }
-
 
             composable("detalle_qr/{idReserva}") { backStackEntry ->
                 val idReserva = backStackEntry.arguments?.getString("idReserva") ?: ""
@@ -264,7 +342,6 @@ fun PantallaAdminContenedor(onAgregarClick: () -> Unit, flotaViewModel: FlotaVie
                     onFinalizado = { tabNavController.popBackStack() }
                 )
             }
-
 
             composable("seleccion_historial") {
                 PantallaSeleccionVehiculoBitacora(
