@@ -1,8 +1,6 @@
-# 🚗 ShielDrive - Manual de Usuario
+# ShielDrive - Manual de Usuario
 
-<p align="center">
-  <img src="public/icono.png" alt="Logo ShielDrive" width="120" style="border-radius: 20%;">
-</p>
+
 
 <p align="center">
   <strong>Plataforma móvil para la reserva, gestión y administración de alquiler de vehículos.</strong>
@@ -10,7 +8,7 @@
 
 ---
 
-## 📌 Tabla de Contenidos
+## Tabla de Contenidos
 - [Requisitos del Sistema](#-requisitos-del-sistema)
 - [Descarga e Instalación](#-descarga-e-instalación)
 - [Flujo de Autenticación](#-flujo-de-autenticación)
@@ -20,7 +18,7 @@
 
 ---
 
-## 📱 Requisitos del Sistema
+##  Requisitos del Sistema
 
 | Parámetro | Requisito Mínimo |
 | :--- | :--- |
@@ -51,10 +49,10 @@
 * **Paso 2 - Credenciales y Seguridad:**
   * Define un **nombre de usuario**.
   * Crea una **contraseña segura** que cumpla con los estándares del sistema:
-    * ✅ Mínimo 8 caracteres
-    * ✅ Combinación de letras mayúsculas y minúsculas
-    * ✅ Al menos 1 número
-    * ✅ Al menos 1 carácter especial o símbolo
+    *  Mínimo 8 caracteres
+    *  Combinación de letras mayúsculas y minúsculas
+    *  Al menos 1 número
+    *  Al menos 1 carácter especial o símbolo
   * Confirma la contraseña y presiona **Finalizar Registro**.
 
 ### 2. Inicio de Sesión
