@@ -229,7 +229,7 @@ fun PantallaAgregarVehiculo(onVolver: () -> Unit, flotaViewModel: FlotaViewModel
                     2 -> {
                         Column {
                             Text("Detalles técnicos", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
-                            Text("Sube una foto clara y verifica los datos del auto.", color = TextSecondary, modifier = Modifier.padding(top = 4.dp, bottom = 24.dp))
+                            Text("Sube una foto clara y verifica los datos del auto. Todos los campos son obligatorios.", color = TextSecondary, modifier = Modifier.padding(top = 4.dp, bottom = 24.dp))
 
                             Box(
                                 modifier = Modifier
@@ -245,7 +245,7 @@ fun PantallaAgregarVehiculo(onVolver: () -> Unit, flotaViewModel: FlotaViewModel
                                 } else {
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                         Icon(Icons.Default.DirectionsCar, null, modifier = Modifier.size(40.dp), tint = TextSecondary)
-                                        Text("Añadir Foto", color = TextSecondary, fontSize = 14.sp)
+                                        Text("Añadir Foto (Obligatorio)", color = TextSecondary, fontSize = 14.sp)
                                     }
                                 }
                             }
@@ -267,6 +267,9 @@ fun PantallaAgregarVehiculo(onVolver: () -> Unit, flotaViewModel: FlotaViewModel
 
                             Spacer(modifier = Modifier.height(32.dp))
 
+                            // 🔥 VALIDACIÓN ESTRICTA DEL PASO 2 🔥
+                            val camposPaso2Completos = imageUri != null && marca.isNotBlank() && modelo.isNotBlank() && anio.isNotBlank() && numAsientos.isNotBlank() && transmision.isNotBlank() && motor.isNotBlank()
+
                             Row(modifier = Modifier.fillMaxWidth()) {
                                 TextButton(onClick = { pasoActual = 1 }, modifier = Modifier.weight(1f)) { Text("Atrás", color = TextSecondary) }
                                 Button(
@@ -274,15 +277,15 @@ fun PantallaAgregarVehiculo(onVolver: () -> Unit, flotaViewModel: FlotaViewModel
                                     modifier = Modifier.weight(2f).height(56.dp),
                                     shape = RoundedCornerShape(16.dp),
                                     colors = ButtonDefaults.buttonColors(containerColor = Primary, disabledContainerColor = Color(0xFFE2E8F0)),
-                                    enabled = marca.isNotEmpty() && modelo.isNotEmpty()
-                                ) { Text("Siguiente", fontWeight = FontWeight.Bold, color = if (marca.isNotEmpty() && modelo.isNotEmpty()) Color.White else TextSecondary) }
+                                    enabled = camposPaso2Completos
+                                ) { Text("Siguiente", fontWeight = FontWeight.Bold, color = if (camposPaso2Completos) Color.White else TextSecondary) }
                             }
                         }
                     }
                     3 -> {
                         Column {
                             Text("Precio y descripción", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
-                            Text("Establece la tarifa y lo que hace especial a este vehículo.", color = TextSecondary, modifier = Modifier.padding(top = 4.dp, bottom = 24.dp))
+                            Text("Establece la tarifa y lo que hace especial a este vehículo. (Obligatorios)", color = TextSecondary, modifier = Modifier.padding(top = 4.dp, bottom = 24.dp))
 
                             OutlinedTextField(
                                 value = precio,
@@ -306,6 +309,9 @@ fun PantallaAgregarVehiculo(onVolver: () -> Unit, flotaViewModel: FlotaViewModel
                             )
 
                             Spacer(modifier = Modifier.height(32.dp))
+
+                            // 🔥 VALIDACIÓN ESTRICTA DEL PASO 3 🔥
+                            val camposPaso3Completos = precio.isNotBlank() && descripcion.isNotBlank()
 
                             Row(modifier = Modifier.fillMaxWidth()) {
                                 TextButton(onClick = { pasoActual = 2 }, enabled = !guardando, modifier = Modifier.weight(1f)) { Text("Atrás", color = TextSecondary) }
@@ -331,10 +337,10 @@ fun PantallaAgregarVehiculo(onVolver: () -> Unit, flotaViewModel: FlotaViewModel
                                     modifier = Modifier.weight(2f).height(56.dp),
                                     shape = RoundedCornerShape(16.dp),
                                     colors = ButtonDefaults.buttonColors(containerColor = SuccessColor, disabledContainerColor = Color(0xFFE2E8F0)),
-                                    enabled = precio.isNotEmpty() && !guardando
+                                    enabled = camposPaso3Completos && !guardando
                                 ) {
                                     if (guardando) CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
-                                    else Text("Guardar Vehículo", fontWeight = FontWeight.Bold, color = if (precio.isNotEmpty() && !guardando) Color.White else TextSecondary)
+                                    else Text("Guardar Vehículo", fontWeight = FontWeight.Bold, color = if (camposPaso3Completos && !guardando) Color.White else TextSecondary)
                                 }
                             }
                         }

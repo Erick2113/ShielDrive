@@ -79,7 +79,8 @@ fun PantallaInicioUsuario(
     var queryBusqueda by remember { mutableStateOf("") }
     var marcaSeleccionada by remember { mutableStateOf<String?>(null) }
     var mostrarSheetFiltros by remember { mutableStateOf(false) }
-    var filtroPrecioMaximo by remember { mutableFloatStateOf(200f) }
+
+    var filtroPrecioMaximo by remember { mutableFloatStateOf(10000f) }
     var filtroTransmision by remember { mutableStateOf("Todas") }
 
     val db = FirebaseFirestore.getInstance()
@@ -114,7 +115,10 @@ fun PantallaInicioUsuario(
         val coincidePrecio = precioNumerico <= filtroPrecioMaximo
         val coincideTransmision = filtroTransmision == "Todas" || vehiculo.transmision.equals(filtroTransmision, ignoreCase = true)
 
-        coincideTexto && coincideMarca && coincidePrecio && coincideTransmision
+        // Filtro para ocultar los dados de baja
+        val noDadoDeBaja = vehiculo.estado != "Dado de baja"
+
+        coincideTexto && coincideMarca && coincidePrecio && coincideTransmision && noDadoDeBaja
     }
 
     Column(modifier = Modifier.fillMaxSize().background(Color.Transparent).verticalScroll(rememberScrollState())) {
@@ -179,8 +183,7 @@ fun PantallaInicioUsuario(
                 Slider(
                     value = filtroPrecioMaximo,
                     onValueChange = { filtroPrecioMaximo = it },
-                    valueRange = 10f..300f,
-                    steps = 29,
+                    valueRange = 10f..10000f, // 🔥 CAMBIO: Rango aumentado hasta 10,000
                     modifier = Modifier.fillMaxWidth(),
                     colors = SliderDefaults.colors(
                         thumbColor = Primary,
