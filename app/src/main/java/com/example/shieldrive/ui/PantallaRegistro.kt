@@ -16,7 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material.icons.outlined.Circle
+import androidx.compose.material.icons.outlined.RadioButtonUnchecked
 import androidx.compose.material.icons.rounded.Email
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Person
@@ -371,7 +371,7 @@ fun RequisitoCheck(texto: String, cumplido: Boolean) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
-            imageVector = if (cumplido) Icons.Filled.CheckCircle else Icons.Outlined.Circle,
+            imageVector = if (cumplido) Icons.Filled.CheckCircle else Icons.Outlined.RadioButtonUnchecked, // <--- AQUÍ ESTÁ EL CAMBIO
             contentDescription = null,
             tint = if (cumplido) Color.White else Color.White.copy(alpha = 0.5f),
             modifier = Modifier.size(22.dp)
